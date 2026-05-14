@@ -87781,7 +87781,7 @@
       },
       {
         "description": "APP",
-        "frequency_mhz": 119.5
+        "frequency_mhz": 119.51
       },
       {
         "description": "APRS",
@@ -87797,15 +87797,15 @@
       },
       {
         "description": "CDC",
-        "frequency_mhz": 134.55
+        "frequency_mhz": 134.54
       },
       {
         "description": "GND",
-        "frequency_mhz": 121.9
+        "frequency_mhz": 121.905
       },
       {
         "description": "TWR",
-        "frequency_mhz": 118.1
+        "frequency_mhz": 118.715
       }
     ]
   },
@@ -94814,8 +94814,12 @@
         "frequency_mhz": 119.85
       },
       {
+        "description": "RDR",
+        "frequency_mhz": 129.355
+      },
+      {
         "description": "TWR",
-        "frequency_mhz": 120.4
+        "frequency_mhz": 120.405
       }
     ]
   },
@@ -125098,7 +125102,11 @@
       {
         "description": "TWR",
         "frequency_mhz": 118.1
-      }
+      },
+	  {
+		  "description": "ATIS",
+		  "frequency_mhz": 126.6
+	  }
     ]
   },
   {
@@ -128018,30 +128026,46 @@
     "freq": [
       {
         "description": "APP",
-        "frequency_mhz": 121.9
+        "frequency_mhz": 118.55
       },
       {
         "description": "APP",
-        "frequency_mhz": 123.6
+        "frequency_mhz": 124.2
       },
       {
         "description": "APP",
-        "frequency_mhz": 130.35
+        "frequency_mhz": 127.2
       },
       {
         "description": "APP",
-        "frequency_mhz": 134.55
+        "frequency_mhz": 127.7
+      },
+	  {
+        "description": "APP",
+        "frequency_mhz": 128.0
+      },
+	  {
+        "description": "APP",
+        "frequency_mhz": 130.375
+      },
+	  {
+        "description": "APP",
+        "frequency_mhz": 131.2
       },
       {
         "description": "ATIS",
-        "frequency_mhz": 122.075
+        "frequency_mhz": 120.375
+      },
+	  {
+        "description": "ATIS",
+        "frequency_mhz": 126.375
       },
       {
         "description": "ATIS",
         "frequency_mhz": 125.125
       },
       {
-        "description": "DELIVERY",
+        "description": "CLR",
         "frequency_mhz": 120.875
       },
       {
@@ -128050,33 +128074,66 @@
       },
       {
         "description": "GND",
-        "frequency_mhz": 121.8
-      },
-      {
-        "description": "GND",
         "frequency_mhz": 122.9
       },
       {
-        "description": "PMSV",
-        "frequency_mhz": 127.875
-      },
-      {
-        "description": "RADAR",
+        "description": "RDR",
         "frequency_mhz": 122.7
+      },
+	  {
+        "description": "RDR",
+        "frequency_mhz": 122.9
+      },
+	  {
+        "description": "RDR",
+        "frequency_mhz": 126.6
       },
       {
         "description": "RDR",
         "frequency_mhz": 118.1
       },
+	  {
+        "description": "RDR",
+        "frequency_mhz": 135.175
+      },
       {
         "description": "TWR",
-        "frequency_mhz": 120.7
+        "frequency_mhz": 118.7
       },
       {
         "description": "TWR",
         "frequency_mhz": 131.5
       }
     ]
+  },
+  {
+	"icao": "UWKD",
+    "name": "Kazan Air Base",
+    "lat": 55.6062,
+    "lon": 49.278702777777774,
+    "link": "unavailable",
+    "freq": [
+      {
+        "description": "APP",
+        "frequency_mhz": 128.625
+      },
+	  {
+		  "description": "ATIS",
+		  "frequency_mhz": 126.8
+	  },
+      {
+        "description": "GND",
+        "frequency_mhz": 121.7
+      },
+	  {
+        "description": "RDR",
+        "frequency_mhz": 119.4
+      },
+      {
+        "description": "TWR",
+        "frequency_mhz": 120.3
+      }
+    ] 
   },
   {
     "icao": "UUEM",
