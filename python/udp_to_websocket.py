@@ -155,6 +155,10 @@ def get_simapi_input_path():
     # Get the path for the simAPI_input.json file that SayIntentionsAI reads
     return os.path.join(get_local_appdata_path(), 'simAPI_input.json')
 
+def get_simapi_output_path():
+    # Get the path for the simAPI_output.jsonl (mind the l!) file that SayIntentions writes.
+    return os.path.join(get_local_appdata_path(), 'simAPI_output.jsonl')
+
 # Data classes for parsed messages from Aerofly FS4
 class XGPSData:
     # Represents GPS/position data from Aerofly FS4
@@ -187,16 +191,16 @@ radio_state = {
     'com1': {
         'active': '118.000',   # Active frequency
         'standby': '118.500',  # Standby frequency
-        'power': False         # Radio power state
+        'power': True         # Radio power state
     },
     'com2': {
         'active': '118.500',
         'standby': '118.000',
-        'power': False
+        'power': True
     },
     'transponder': {
         'code': '1200',        # Current transponder code
-        'power': False         # Transponder power state
+        'power': True         # Transponder power state
     }
 }
 
@@ -220,7 +224,7 @@ async def write_simapi_file():
     # Only write if we have WebSocket clients connected and data available
     if not websocket_clients or not latest_xgps or time.time() - last_simapi_write < 0.75:
         return
-    
+    print(str(websocket_clients))
     try:
         # Send file writing status update
         await send_status_update(file_writing=True)
@@ -233,13 +237,14 @@ async def write_simapi_file():
             # Basic SimVars with default values (required by SayIntentionsAI)
             "PLANE LATITUDE": 0.0,
             "PLANE LONGITUDE": 0.0,
-            "PLANE ALTITUDE": 0.0,  # In feet
-            "GROUND VELOCITY": 0.0,  # In knots
-            "PLANE HEADING DEGREES TRUE": 0.0,
-            "PLANE PITCH DEGREES": 0.0,
-            "PLANE BANK DEGREES": 0.0,
-            "VERTICAL SPEED": 0.0,  # In feet per minute
-            "AIRSPEED INDICATED": 0.0,  # In knots (estimated from ground speed)
+            "PLANE ALTITUDE": 0,  # In feet
+            "GROUND VELOCITY": 0,  # In knots
+            "PLANE HEADING DEGREES TRUE": 0,
+            "PLANE PITCH DEGREES": 0,
+            "PLANE BANK DEGREES": 0,
+            "VERTICAL SPEED": 0,  # In feet per minute
+            "AIRSPEED INDICATED": 0,  # In knots (estimated from ground speed)
+            "AIRSPEED TRUE": 0,
             
             # Radio stack - use values from web interface
             "COM ACTIVE FREQUENCY:1": float(radio_state['com1']['active']),
@@ -260,26 +265,38 @@ async def write_simapi_file():
             "TRANSPONDER STATE:1": 4 if radio_state['transponder']['power'] else 0,
             
             # Other required variables for SayIntentionsAI
-            "ATC ID": "N250VB",
-            "PLANE ALT ABOVE GROUND": 0.0,  # AGL in feet
-            "SIM ON GROUND": 1  # 1 for on ground, 0 for in air
+            "ATC ID": "F-GZZZ",
+            "PLANE ALT ABOVE GROUND MINUS CG": 0,  # AGL in feet
+            "SIM ON GROUND": 1,  # 1 for on ground, 0 for in air
+            "WHEEL RPM:0": 0, 
+            "WHEEL RPM:1": 0,
+            "ENGINE TYPE": 1, #0 = Piston, 1 = Jet, 2 = None, 3 = Helo(Bell) turbine, 4 = Unsupported, 5 = Turboprop
+            "INDICATED ALTITUDE": 0,
+            "MAGNETIC COMPASS": 0, 
+            "MAGVAR": 0,
+            
         }
         
         # Update with XGPS data (position, altitude, speed, track)
         if latest_xgps:
+            sim_on_ground = 1 if (latest_xgps.ground_speed_mps < 14) else 0     #This is around 50 kph or 27 knots. With strong winds, smaller aircraft could possibly fly with this low of a ground speed, but whatever.
             variables.update({
                 "PLANE LATITUDE": latest_xgps.latitude,
                 "PLANE LONGITUDE": latest_xgps.longitude,
-                "PLANE ALTITUDE": latest_xgps.alt_msl_meters * METERS_TO_FEET,  # Convert to feet
-                "GROUND VELOCITY": latest_xgps.ground_speed_mps * MPS_TO_KTS,   # Convert to knots
-                "PLANE HEADING DEGREES TRUE": latest_xgps.track_deg % 360.0,    # Normalize to 0-360
-                "AIRSPEED INDICATED": latest_xgps.ground_speed_mps * MPS_TO_KTS, # Estimate from ground speed
+                "PLANE ALTITUDE": int(latest_xgps.alt_msl_meters * METERS_TO_FEET),  # Convert to feet
+                "GROUND VELOCITY": int(latest_xgps.ground_speed_mps * MPS_TO_KTS),   # Convert to knots
+                "PLANE HEADING DEGREES TRUE": int(latest_xgps.track_deg % 360.0),    # Normalize to 0-360
+                "AIRSPEED INDICATED": int(latest_xgps.ground_speed_mps * MPS_TO_KTS), # Estimate from ground speed
+                "AIRSPEED TRUE": int(latest_xgps.ground_speed_mps * MPS_TO_KTS),
+                "INDICATED ALTITUDE": int(latest_xgps.alt_msl_meters * METERS_TO_FEET),
                 
                 # Determine if on ground based on altitude and speed
-                "SIM ON GROUND": 1 if (latest_xgps.alt_msl_meters < 10 and latest_xgps.ground_speed_mps < 1) else 0,
+                "SIM ON GROUND": sim_on_ground,
+                "WHEEL RPM:0": int(sim_on_ground*latest_xgps.ground_speed_mps*60/(3.1415926535*0.6)), #1,2 meter radius wheel.
+                "WHEEL RPM:1": int(sim_on_ground*latest_xgps.ground_speed_mps*60/(3.1415926535*0.6)), #1,2 meter radius wheel.
                 
                 # Estimate AGL (crude approximation - subtract 50 feet for ground level)
-                "PLANE ALT ABOVE GROUND": max(0, (latest_xgps.alt_msl_meters * METERS_TO_FEET) - 50)
+                "PLANE ALT ABOVE GROUND MINUS CG": int(max(0, (latest_xgps.alt_msl_meters * METERS_TO_FEET) - 50))
             })
         
         # Update with XATT data (heading, pitch, roll)
@@ -295,6 +312,76 @@ async def write_simapi_file():
                 pitch_radians = latest_xatt.pitch_deg * (3.14159 / 180.0)  # Convert to radians
                 vertical_component = latest_xgps.ground_speed_mps * max(-1, min(1, pitch_radians))  # Clamp to reasonable range
                 variables["VERTICAL SPEED"] = vertical_component * MPS_TO_FPM  # Convert to feet per minute
+        
+        # Update with SimAPI request changes. # The radio changes aren't actually sent to clients (yet), so if you interact with the controls (on the web or in-game), it will overwrite the state. But this should enable you to let AutoTune handle it after the first transmission.
+                                              # Based on the description on the site, AutoTune only sets the standby frequency. So, if that is indeed the case, further trickery may have to be done. But if the copilot sends separate commands, this should be fine...?
+        output_path = get_simapi_output_path()
+        if os.path.exists(output_path):
+            try:
+                with open(output_path, 'r') as simapi_output_file:
+                    # To prevent lag, we only look at the last 10 lines of the file
+                    # for the most recent commands rather than the whole history.
+                    lines = simapi_output_file.readlines()
+                    recent_lines = lines[-10:] if len(lines) > 10 else lines
+                    
+                    for line in recent_lines:
+                        if not line.strip(): continue
+                        try:
+                            simapi_command = json.loads(line.strip())
+                            simapi_setvar = simapi_command.get("setvar")
+                            simapi_value = simapi_command.get("value")
+                            
+                            if simapi_setvar == "COM2_RADIO_SET_HZ":
+                                simapi_value = str(simapi_value).zfill(7)
+                                simapi_value = simapi_value[:-6] + '.' + simapi_value[-6:]
+                                radio_state['com2']['active'] = simapi_value
+                                variables.update({"COM ACTIVE FREQUENCY:2": float(radio_state['com2']['active'])})
+                                
+                            elif simapi_setvar == "COM_RADIO_SET_HZ":
+                                simapi_value = str(simapi_value).zfill(7)
+                                simapi_value = simapi_value[:-6] + '.' + simapi_value[-6:]
+                                radio_state['com1']['active'] = simapi_value
+                                variables.update({"COM ACTIVE FREQUENCY:1": float(radio_state['com1']['active'])})
+                                
+                            elif simapi_setvar == "COM2_RADIO_SWAP":
+                                temp = radio_state['com2']['active']
+                                radio_state['com2']['active'] = radio_state['com2']['standby']
+                                radio_state['com2']['standby'] = temp
+                                variables.update({
+                                    "COM ACTIVE FREQUENCY:2": float(radio_state['com2']['active']),
+                                    "COM STANDBY FREQUENCY:2": float(radio_state['com2']['standby'])
+                                })
+                                
+                            elif simapi_setvar == "COM_RADIO_SWAP":
+                                temp = radio_state['com1']['active']
+                                radio_state['com1']['active'] = radio_state['com1']['standby']
+                                radio_state['com1']['standby'] = temp
+                                variables.update({
+                                    "COM ACTIVE FREQUENCY:1": float(radio_state['com1']['active']),
+                                    "COM STANDBY FREQUENCY:1": float(radio_state['com1']['standby'])
+                                })
+
+                            elif simapi_setvar == "COM2_STBY_RADIO_SET_HZ":
+                                simapi_value = str(simapi_value).zfill(7)
+                                simapi_value = simapi_value[:-6] + '.' + simapi_value[-6:]
+                                radio_state['com2']['standby'] = simapi_value
+                                variables.update({"COM STANDBY FREQUENCY:2": float(radio_state['com2']['standby'])})
+
+                            elif simapi_setvar == "COM_STBY_RADIO_SET_HZ":
+                                simapi_value = str(simapi_value).zfill(7)
+                                simapi_value = simapi_value[:-6] + '.' + simapi_value[-6:]
+                                radio_state['com1']['standby'] = simapi_value
+                                variables.update({"COM STANDBY FREQUENCY:1": float(radio_state['com1']['standby'])})
+
+                            elif simapi_setvar == "XPNDR_SET":
+                                radio_state['transponder']['code'] = str(simapi_value).zfill(4)
+                                variables.update({"TRANSPONDER CODE:1": int(radio_state['transponder']['code'])})
+                        
+                        except json.JSONDecodeError:
+                            continue # Skip malformed lines
+            except Exception as e:
+                print(f"Warning: Could not read simAPI_output.jsonl: {e}")
+        #close simapi_output_file
         
         # Create the complete SimAPI structure expected by SayIntentionsAI
         simapi_data = {
